@@ -53,7 +53,7 @@ def test_cursor_pagination_iteration_next(client: Client, categories: list[Categ
     assert response_next.status_code == 200
     response_next_json = response_next.json()
     assert response_next_json["results"] == [{"title": "C"}, {"title": "D"}]
-    assert response_next_json["count"] == 5
+    assert response_next_json["count"] is None
     assert response_next_json["next"] is not None
     assert response_next_json["previous"] is not None
 
@@ -67,7 +67,7 @@ def test_cursor_pagination_iteration_previous(client: Client, categories: list[C
     assert response_previous.status_code == 200
     response_previous_json = response_previous.json()
     assert response_previous_json["results"] == [{"title": "A"}, {"title": "B"}]
-    assert response_previous_json["count"] == 5
+    assert response_previous_json["count"] is None
     assert response_previous_json["next"] is not None
     assert response_previous_json["previous"] is None
 
