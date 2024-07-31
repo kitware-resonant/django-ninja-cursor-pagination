@@ -39,10 +39,6 @@ dynamic = ["version"]
 Repository = "https://github.com/kitware-resonant/django-ninja-cursor-pagination"
 "Bug Reports" = "https://github.com/kitware-resonant/django-ninja-cursor-pagination/issues"
 
-[tool.black]
-line-length = 100
-target-version = ["py38"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["tests/demo_project"]
