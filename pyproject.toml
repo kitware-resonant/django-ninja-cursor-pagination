@@ -1,0 +1,95 @@
+[project]
+name = "django-ninja-cursor-pagination"
+description = "A Django Ninja extension for cursor-based pagination."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache 2.0" }
+maintainers = [{ name = "Kitware, Inc.", email = "kitware@kitware.com" }]
+keywords = [
+  "django",
+  "django-ninja",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Web Environment",
+  'Framework :: Django :: 3',
+  "Framework :: Django :: 3.2",
+  'Framework :: Django :: 4',
+  "Framework :: Django :: 4.1",
+  "Framework :: Django :: 4.2",
+  "Framework :: Django",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python",
+]
+dependencies = [
+  "django>=3.2",
+  "django-ninja",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/kitware-resonant/django-ninja-cursor-pagination"
+"Bug Reports" = "https://github.com/kitware-resonant/django-ninja-cursor-pagination/issues"
+
+[tool.black]
+line-length = 100
+target-version = ["py38"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests/demo_project"]
+# Configure pythonpath ourselves, not based on manage.py
+addopts = [
+  # Test utilies are imported absolutely from the pythonpath,
+  # so use the Pytest-reccomended "importlib" mode
+  "--import-mode=importlib",
+  "--strict-config",
+  "--strict-markers",
+  "--showlocals",
+  "--verbose",
+]
+filterwarnings = [
+  "error",
+  # pytest often causes unclosed socket warnings
+  'ignore:unclosed <socket\.socket:ResourceWarning',
+  # Django 3.2 emites some deprecation warnings
+  "ignore::DeprecationWarning:django",
+  # django-ninja triggers some pydantic deprecation warnings
+  "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+]
+DJANGO_SETTINGS_MODULE = "demo.settings"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["typings"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN", # flake8-annotations
+  "ARG001", # Unused function argument
+  "ARG002", # Unused method argument
+  "D1", # Missing docstring
+]
+
+[tool.ruff.lint.isort]
+# Sort by name, don't cluster "from" vs "import"
+force-sort-within-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "DJ008",
+  "INP001",
+  "PLR2004",
+  "S101",
+  "S105",
+]
