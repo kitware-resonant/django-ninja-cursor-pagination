@@ -1,5 +1,5 @@
-import pytest
 from django.test import Client
+import pytest
 from someapp.models import Category
 
 
