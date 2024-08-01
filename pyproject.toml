@@ -1,3 +1,15 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+only-include = [
+  "ninja_cursor_pagination",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
 [project]
 name = "django-ninja-cursor-pagination"
 description = "A Django Ninja extension for cursor-based pagination."
