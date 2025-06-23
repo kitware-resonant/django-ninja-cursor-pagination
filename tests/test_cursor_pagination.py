@@ -53,7 +53,7 @@ def test_cursor_pagination_iteration_next(client: Client, categories: list[Categ
     assert response_next.status_code == 200
     response_next_json = response_next.json()
     assert response_next_json["results"] == [{"title": "C"}, {"title": "D"}]
-    assert response_next_json["count"] is None
+    assert response_next_json["count"] == 5
     assert response_next_json["next"] is not None
     assert response_next_json["previous"] is not None
 
@@ -67,9 +67,42 @@ def test_cursor_pagination_iteration_previous(client: Client, categories: list[C
     assert response_previous.status_code == 200
     response_previous_json = response_previous.json()
     assert response_previous_json["results"] == [{"title": "A"}, {"title": "B"}]
-    assert response_previous_json["count"] is None
+    assert response_previous_json["count"] == 5
     assert response_previous_json["next"] is not None
     assert response_previous_json["previous"] is None
+
+
+@pytest.mark.django_db
+def test_cursor_pagination_only_count_initial_page_base(
+    client: Client, categories: list[Category]
+) -> None:
+    response = client.get(reverse("api-1.0.0:list_categories_optimized"), data={"limit": 2})
+
+    response_json = response.json()
+    assert response_json["count"] == 5
+
+
+@pytest.mark.django_db
+def test_cursor_pagination_only_count_initial_page_next(
+    client: Client, categories: list[Category]
+) -> None:
+    response_base = client.get(reverse("api-1.0.0:list_categories_optimized"), data={"limit": 2})
+    response_next = client.get(response_base.json()["next"])
+
+    response_next_json = response_next.json()
+    assert response_next_json["count"] is None
+
+
+@pytest.mark.django_db
+def test_cursor_pagination_only_count_initial_page_previous(
+    client: Client, categories: list[Category]
+) -> None:
+    response_base = client.get(reverse("api-1.0.0:list_categories_optimized"), data={"limit": 2})
+    response_next = client.get(response_base.json()["next"])
+    response_previous = client.get(response_next.json()["previous"])
+
+    response_previous_json = response_previous.json()
+    assert response_previous_json["count"] is None
 
 
 def test_invalid_cursor(client: Client) -> None:
