@@ -21,3 +21,9 @@ class CategorySchema(BaseModel):
 @paginate(CursorPagination)
 def list_categories(request: HttpRequest) -> QuerySet[Category]:
     return Category.objects.order_by("title")
+
+
+@router.get("/categories-optimized", response=list[CategorySchema])
+@paginate(CursorPagination, only_count_initial_page=True)
+def list_categories_optimized(request: HttpRequest) -> QuerySet[Category]:
+    return Category.objects.order_by("title")
