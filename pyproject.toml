@@ -2,6 +2,69 @@
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
+[project]
+name = "django-ninja-cursor-pagination"
+description = "A Django Ninja extension for cursor-based pagination."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+maintainers = [{name = "Kitware, Inc.", email = "kitware@kitware.com"}]
+keywords = [
+  "django",
+  "django-ninja",
+  "resonant",
+  "kitware-resonant",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Web Environment",
+  "Framework :: Django :: 4",
+  "Framework :: Django :: 4.2",
+  "Framework :: Django :: 5",
+  "Framework :: Django :: 5.1",
+  "Framework :: Django :: 5.2",
+  "Framework :: Django",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python",
+]
+dependencies = [
+  "django",
+  "django-ninja",
+  "pydantic",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/kitware-resonant/django-ninja-cursor-pagination"
+"Bug Reports" = "https://github.com/kitware-resonant/django-ninja-cursor-pagination/issues"
+
+[dependency-groups]
+dev = [
+  "tox",
+  "tox-uv",
+]
+lint = [
+  "ruff",
+]
+format = [
+  "ruff",
+]
+type = [
+  "mypy",
+  "django-stubs[compatible-mypy]",
+]
+test = [
+  "pytest",
+  "pytest-django",
+]
+
 [tool.hatch.build]
 only-include = [
   "ninja_cursor_pagination",
@@ -10,54 +73,36 @@ only-include = [
 [tool.hatch.version]
 source = "vcs"
 
-[project]
-name = "django-ninja-cursor-pagination"
-description = "A Django Ninja extension for cursor-based pagination."
-readme = "README.md"
-requires-python = ">=3.8"
-license = { text = "Apache 2.0" }
-maintainers = [{ name = "Kitware, Inc.", email = "kitware@kitware.com" }]
-keywords = [
-  "django",
-  "django-ninja",
+[tool.mypy]
+files = [
+  "ninja_cursor_pagination",
+  "tests",
 ]
-classifiers = [
-  "Development Status :: 5 - Production/Stable",
-  "Environment :: Web Environment",
-  'Framework :: Django :: 3',
-  "Framework :: Django :: 3.2",
-  'Framework :: Django :: 4',
-  "Framework :: Django :: 4.1",
-  "Framework :: Django :: 4.2",
-  "Framework :: Django",
-  "Intended Audience :: Developers",
-  "License :: OSI Approved :: Apache Software License",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python",
+check_untyped_defs = true
+show_error_codes = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+plugins = [
+  "mypy_django_plugin.main",
 ]
-dependencies = [
-  "django>=3.2",
-  "django-ninja",
+mypy_path = [
+  # Use the same pythonpath for MyPy as for Pytest
+  "tests",
 ]
-dynamic = ["version"]
 
-[project.urls]
-Repository = "https://github.com/kitware-resonant/django-ninja-cursor-pagination"
-"Bug Reports" = "https://github.com/kitware-resonant/django-ninja-cursor-pagination/issues"
+[tool.django-stubs]
+django_settings_module = "test_app.settings"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["tests/demo_project"]
+# Allow test_app to be imported without adding the root directory to the pythonpath,
+# which would cause the local "ninja_cursor_pagination" module to shadow the install.
+pythonpath = ["tests"]
 # Configure pythonpath ourselves, not based on manage.py
+django_find_project = false
 addopts = [
-  # Test utilies are imported absolutely from the pythonpath,
-  # so use the Pytest-reccomended "importlib" mode
+  # Use the Pytest-reccomended "importlib" mode
   "--import-mode=importlib",
   "--strict-config",
   "--strict-markers",
@@ -68,16 +113,13 @@ filterwarnings = [
   "error",
   # pytest often causes unclosed socket warnings
   'ignore:unclosed <socket\.socket:ResourceWarning',
-  # Django 3.2 emites some deprecation warnings
-  "ignore::DeprecationWarning:django",
   # django-ninja triggers some pydantic deprecation warnings
   "ignore::pydantic.warnings.PydanticDeprecatedSince20",
 ]
-DJANGO_SETTINGS_MODULE = "demo.settings"
+DJANGO_SETTINGS_MODULE = "test_app.settings"
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
 extend-exclude = ["typings"]
 
 [tool.ruff.lint]

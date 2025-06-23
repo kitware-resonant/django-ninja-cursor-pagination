@@ -1,0 +1,25 @@
+name: release
+on:
+  release:
+    types: [published]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Tags are needed to compute the current version number
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Build the Python distribution
+        run: |
+          uv build
+      - name: Publish the Python distributions to PyPI
+        run: |
+          uv publish --trusted-publishing=always

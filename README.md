@@ -1,7 +1,6 @@
 # django-ninja-cursor-pagination
 
-This library adds a new pagination class for use with [django-ninja](https://django-ninja.dev/)
-which supports cursor-based pagination.
+A [Django Ninja]((https://django-ninja.dev/)) extension for cursor-based pagination.
 
 ## Installation
 
