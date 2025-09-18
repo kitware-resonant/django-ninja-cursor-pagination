@@ -76,7 +76,7 @@ class CursorPagination(PaginationBase):
 
     class Output(Schema):
         results: list[Any] = Field(description=_("The page of objects."))
-        count: int = Field(
+        count: int | None = Field(
             description=_("The total number of results across all pages."),
         )
         next: str | None = Field(
@@ -91,6 +91,10 @@ class CursorPagination(PaginationBase):
     max_page_size = 100
     _offset_cutoff = 100  # limit to protect against possibly malicious queries
 
+    def __init__(self, *, only_count_initial_page: bool = False, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.only_count_initial_page = only_count_initial_page
+
     def paginate_queryset(
         self,
         queryset: QuerySet,
@@ -104,7 +108,12 @@ class CursorPagination(PaginationBase):
             queryset = queryset.order_by(*self.default_ordering)
 
         order = queryset.query.order_by
-        total_count = queryset.count()
+
+        # The absense of a position usually indicates that we're on the first page.
+        is_initial_page = pagination.cursor.position is None
+        total_count = (
+            None if self.only_count_initial_page and not is_initial_page else queryset.count()
+        )
 
         base_url = request.build_absolute_uri()
         cursor = pagination.cursor
