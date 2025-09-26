@@ -76,7 +76,7 @@ def test_invalid_cursor(client: Client) -> None:
     response = client.get(reverse("api-1.0.0:list_categories"), data={"cursor": "invalid"})
 
     assert response.status_code == 422
-    assert "Invalid cursor." in response.json()["detail"][0]["msg"]
+    assert "Invalid cursor" in response.json()["detail"][0]["msg"]
 
 
 @pytest.mark.django_db

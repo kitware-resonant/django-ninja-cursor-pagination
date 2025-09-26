@@ -61,6 +61,7 @@ type = [
   "django-stubs[compatible-mypy]",
 ]
 test = [
+  "hypothesis",
   "pytest",
   "pytest-django",
 ]
@@ -85,6 +86,7 @@ warn_unused_configs = true
 warn_unused_ignores = true
 plugins = [
   "mypy_django_plugin.main",
+  "pydantic.mypy",
 ]
 mypy_path = [
   # Use the same pythonpath for MyPy as for Pytest
