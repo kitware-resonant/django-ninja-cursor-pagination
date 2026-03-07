@@ -1,28 +1,20 @@
-from base64 import b64decode, b64encode
-from dataclasses import dataclass
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, TypedDict, cast
 from urllib import parse
 
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from django.utils.translation import gettext as _
 from ninja import Field, Schema
 from ninja.pagination import PaginationBase
 from pydantic import field_validator
 
+from ._cursor import Cursor
 
-@dataclass
-class Cursor:
-    offset: int = 0
-    reverse: bool = False
-    position: str | None = None
+MAX_PAGE_SIZE = 100
 
 
-def _clamp(val: int, min_: int, max_: int) -> int:
-    return max(min_, min(val, max_))
-
-
-def _reverse_order(order: tuple) -> tuple:
+def _reverse_order(order: Sequence[str]) -> tuple[str, ...]:
     # Reverse the ordering specification for a Django ORM query.
     # Given an order_by tuple such as `('-created', 'uuid')` reverse the
     # ordering and return a new tuple, eg. `('created', '-uuid')`.
@@ -41,38 +33,31 @@ def _replace_query_param(url: str, key: str, val: str) -> str:
 
 
 class CursorPagination(PaginationBase):
+    items_attribute = "results"
+    default_ordering = ("-created",)
+
     class Input(Schema):
-        limit: int | None = Field(
-            None,
+        limit: int = Field(
+            MAX_PAGE_SIZE,
+            ge=0,
+            le=MAX_PAGE_SIZE,
+            allow_inf_nan=False,
             description=_("Number of results to return per page."),
         )
-        cursor: str | None = Field(
-            None,
+        # This ought to be a Cursor type, but Ninja always tries to parse out the individual fields
+        # of the Cursor from the query string before we get control. If Ninja didn't do this, we
+        # could just use "WithJsonSchema" to fake the schema. So, tell Ninja that this is a string,
+        # but use the validator and a "cast" to use it as a real Cursor. Trying to convert it to a
+        # Cursor after validation causes errors to be raised too late.
+        cursor: str = Field(
+            "",
             description=_("The pagination cursor value."),
-            validate_default=True,
         )
 
-        @field_validator("cursor")
+        @field_validator("cursor", mode="after")
         @classmethod
-        def decode_cursor(cls, encoded_cursor: str | None) -> Cursor:
-            if encoded_cursor is None:
-                return Cursor()
-
-            try:
-                querystring = b64decode(encoded_cursor).decode()
-                tokens = parse.parse_qs(querystring, keep_blank_values=True)
-
-                offset = int(tokens.get("o", ["0"])[0])
-                offset = _clamp(offset, 0, CursorPagination._offset_cutoff)
-
-                reverse = tokens.get("r", ["0"])[0]
-                reverse = bool(int(reverse))
-
-                position = tokens.get("p", [None])[0]
-            except (TypeError, ValueError) as e:
-                raise ValueError(_("Invalid cursor.")) from e
-
-            return Cursor(offset=offset, reverse=reverse, position=position)
+        def _validate_cursor(cls, value: str) -> Cursor:
+            return Cursor.model_validate(value)
 
     class Output(Schema):
         results: list[Any] = Field(description=_("The page of objects."))
@@ -86,31 +71,25 @@ class CursorPagination(PaginationBase):
             description=_("URL of previous page of results if there is one."),
         )
 
-    items_attribute = "results"
-    default_ordering = ("-created",)
-    max_page_size = 100
-    _offset_cutoff = 100  # limit to protect against possibly malicious queries
-
-    def paginate_queryset(
+    def paginate_queryset(  # type: ignore[override]
         self,
         queryset: QuerySet,
+        *,
         pagination: Input,
         request: HttpRequest,
         **params,
-    ) -> dict:
-        limit = _clamp(pagination.limit or self.max_page_size, 0, self.max_page_size)
+    ) -> dict[str, Any]:
+        limit = pagination.limit
+        cursor = cast("Cursor", pagination.cursor)
 
         if not queryset.query.order_by:
             queryset = queryset.order_by(*self.default_ordering)
-
         order = queryset.query.order_by
-        total_count = queryset.count()
-
-        base_url = request.build_absolute_uri()
-        cursor = pagination.cursor
 
         if cursor.reverse:
             queryset = queryset.order_by(*_reverse_order(order))
+
+        total_count = queryset.count()
 
         if cursor.position is not None:
             is_reversed = order[0].startswith("-")
@@ -150,6 +129,7 @@ class CursorPagination(PaginationBase):
             next_position = following_position if has_next else None
             previous_position = cursor.position if has_previous else None
 
+        base_url = request.build_absolute_uri()
         return {
             "results": page,
             "count": total_count,
@@ -180,16 +160,7 @@ class CursorPagination(PaginationBase):
         }
 
     def _encode_cursor(self, cursor: Cursor, base_url: str) -> str:
-        tokens = {}
-        if cursor.offset != 0:
-            tokens["o"] = str(cursor.offset)
-        if cursor.reverse:
-            tokens["r"] = "1"
-        if cursor.position is not None:
-            tokens["p"] = cursor.position
-
-        querystring = parse.urlencode(tokens, doseq=True)
-        encoded = b64encode(querystring.encode()).decode()
+        encoded = cursor.model_dump(exclude_defaults=True)
         return _replace_query_param(base_url, "cursor", encoded)
 
     def next_link(  # noqa: PLR0913
@@ -198,20 +169,22 @@ class CursorPagination(PaginationBase):
         base_url: str,
         page: list,
         cursor: Cursor,
-        order: tuple,
+        order: Sequence[str],
         has_previous: bool,
         limit: int,
-        next_position: str,
-        previous_position: str,
+        next_position: str | None,
+        previous_position: str | None,
     ) -> str:
-        if page and cursor.reverse and cursor.offset:
+        compare = (
+            self._get_position_from_instance(page[-1], order)
             # If we're reversing direction and we have an offset cursor
             # then we cannot use the first position we find as a marker.
-            compare = self._get_position_from_instance(page[-1], order)
-        else:
-            compare = next_position
+            if page and cursor.reverse and cursor.offset
+            else next_position
+        )
         offset = 0
 
+        position: str | None
         has_item_with_unique_position = False
         for item in reversed(page):
             position = self._get_position_from_instance(item, order)
@@ -259,20 +232,22 @@ class CursorPagination(PaginationBase):
         base_url: str,
         page: list,
         cursor: Cursor,
-        order: tuple,
+        order: Sequence[str],
         has_next: bool,
         limit: int,
-        next_position: str,
-        previous_position: str,
+        next_position: str | None,
+        previous_position: str | None,
     ):
-        if page and not cursor.reverse and cursor.offset:
+        compare = (
+            self._get_position_from_instance(page[0], order)
             # If we're reversing direction and we have an offset cursor
             # then we cannot use the first position we find as a marker.
-            compare = self._get_position_from_instance(page[0], order)
-        else:
-            compare = previous_position
+            if page and not cursor.reverse and cursor.offset
+            else previous_position
+        )
         offset = 0
 
+        position: str | None
         has_item_with_unique_position = False
         for item in page:
             position = self._get_position_from_instance(item, order)
@@ -314,7 +289,7 @@ class CursorPagination(PaginationBase):
         cursor = Cursor(offset=offset, reverse=True, position=position)
         return self._encode_cursor(cursor, base_url)
 
-    def _get_position_from_instance(self, instance, ordering) -> str:
+    def _get_position_from_instance(self, instance, ordering: Sequence[str]) -> str:
         field_name = ordering[0].lstrip("-")
         attr = instance[field_name] if isinstance(instance, dict) else getattr(instance, field_name)
         return str(attr)
