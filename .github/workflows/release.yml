@@ -16,7 +16,7 @@ jobs:
           # Tags are needed to compute the current version number
           fetch-depth: 0
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - name: Build the Python distribution
         run: |
           uv build
